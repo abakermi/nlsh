@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/abakermi/nlsh)](https://github.com/abakermi/nlsh/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/abakermi/nlsh)](https://github.com/abakermi/nlsh)
 
+<img src="./resources//play.gif" width="500" />
 A command-line tool that converts natural language instructions into shell commands using OpenAI's GPT-3.5 model. Simply describe what you want to do in plain English, and nlsh will generate and execute the appropriate shell command.
 
 ## Features
