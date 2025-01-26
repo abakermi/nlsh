@@ -2,66 +2,45 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
+	"runtime"
 	"strings"
 
-	"github.com/sashabaranov/go-openai"
+	"github.com/abakermi/nlsh/pkg/assistant"
+	"github.com/abakermi/nlsh/pkg/backend"
+	"github.com/abakermi/nlsh/pkg/config"
+	"github.com/abakermi/nlsh/pkg/color"
+	"github.com/abakermi/nlsh/pkg/safety"
 )
 
-const (
-	systemPrompt = `You are a helpful shell command assistant. Convert natural language requests into appropriate shell commands.
-Provide ONLY the command without any explanation. If you're unsure or the request is unclear, respond with "UNCLEAR".
-Ensure the command is safe and won't harm the system.`
-)
+const systemPromptTemplate = `You are a expert system shell assistant. Convert natural language requests into appropriate shell commands for %s.
+Current Directory: %s
+Shell: %s
+OS: %s
 
-type ShellAssistant struct {
-	client *openai.Client
-}
+Follow these rules:
+1. Prefer standard GNU coreutils over platform-specific tools
+2. Use pipes for complex operations
+3. Avoid destructive commands (rm -rf, dd, etc)
+4. Add comments for complex commands
+5. Consider directory context
 
-func NewShellAssistant(apiKey string) *ShellAssistant {
-	return &ShellAssistant{
-		client: openai.NewClient(apiKey),
+Provide ONLY the command without explanation. If unclear, respond with "UNCLEAR".`
+
+func getSystemContext() string {
+	dir, _ := os.Getwd()
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "unknown"
 	}
-}
-
-func (sa *ShellAssistant) GetCommand(input string) (string, error) {
-	resp, err := sa.client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: systemPrompt,
-				},
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: input,
-				},
-			},
-		},
+	return fmt.Sprintf(
+		"OS: %s\nShell: %s\nCurrent Directory: %s",
+		runtime.GOOS,
+		shell,
+		dir,
 	)
-	if err != nil {
-		return "", fmt.Errorf("error getting completion: %v", err)
-	}
-
-	command := strings.TrimSpace(resp.Choices[0].Message.Content)
-	if command == "UNCLEAR" {
-		return "", fmt.Errorf("unclear request, please be more specific")
-	}
-
-	return command, nil
-}
-
-func (sa *ShellAssistant) ExecuteCommand(command string) error {
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
 
 func main() {
@@ -70,27 +49,52 @@ func main() {
 		log.Fatal("OPENAI_API_KEY environment variable is not set")
 	}
 
-	assistant := NewShellAssistant(apiKey)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
 
-	// Check if command-line argument is provided
+	systemCtx := fmt.Sprintf(systemPromptTemplate, runtime.GOOS, getSystemContext(), os.Getenv("SHELL"), runtime.GOOS)
+	
+	llmBackend := backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
+	
+	safetyChecker := safety.NewChecker(
+		cfg.Safety.AllowedCommands,
+		append([]string{
+			"rm * -rf*",
+			"dd *",
+			"mkfs*",
+			"*--no-preserve-root*",
+		}, cfg.Safety.DeniedCommands...),
+	)
+
+	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
+
+	fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
+	
 	if len(os.Args) > 1 {
-		// Join all arguments as a single instruction
-		input := strings.Join(os.Args[1:], " ")
-		command, err := assistant.GetCommand(input)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Executing: %s\n", command)
-		if err := assistant.ExecuteCommand(command); err != nil {
-			fmt.Printf("Error executing command: %v\n", err)
-			os.Exit(1)
-		}
+		handleSingleCommand(shellAssistant, os.Args[1:])
 		return
 	}
 
-	// Interactive mode
+	runInteractiveMode(shellAssistant)
+}
+
+func handleSingleCommand(assistant *assistant.ShellAssistant, args []string) {
+	input := strings.Join(args, " ")
+	command, err := assistant.GetCommand(input)
+	if err != nil {
+		fmt.Printf("%sError: %v%s\n", color.Red, err, color.Reset)
+		os.Exit(1)
+	}
+
+	if err := assistant.ExecuteCommand(command); err != nil {
+		fmt.Printf("%sError executing command: %v%s\n", color.Red, err, color.Reset)
+		os.Exit(1)
+	}
+}
+
+func runInteractiveMode(assistant *assistant.ShellAssistant) {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("Natural Language Shell (nlsh) - Type 'exit' to quit")
 	fmt.Println("Enter your request in natural language:")
@@ -108,13 +112,12 @@ func main() {
 
 		command, err := assistant.GetCommand(input)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("%sError: %v%s\n", color.Red, err, color.Reset)
 			continue
 		}
 
-		fmt.Printf("Executing: %s\n", command)
 		if err := assistant.ExecuteCommand(command); err != nil {
-			fmt.Printf("Error executing command: %v\n", err)
+			fmt.Printf("%sError executing command: %v%s\n", color.Red, err, color.Reset)
 		}
 	}
 }
