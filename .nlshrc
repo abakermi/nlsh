@@ -1,0 +1,8 @@
+[openai]
+model = "gpt-4o-2024-08-06"
+temperature = 0.5
+
+[safety]
+confirm_execution = true
+allowed_commands = ["ls", "git", "docker"]
+denied_commands = ["rm", "dd", "shutdown"]
