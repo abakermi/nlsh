@@ -28,7 +28,7 @@ A command-line tool that converts natural language instructions into shell comma
 
 Install directly using curl:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/abakermi/nlsh/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/abakermi/nlsh/master/install.sh | bash
 ```
 
 ### Option 2: Go Install
