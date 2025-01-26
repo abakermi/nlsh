@@ -25,15 +25,37 @@ func Load() (*Config, error) {
 	configPath := filepath.Join(os.Getenv("HOME"), ".nlshrc")
 	
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		// Create default config file
 		defaultConfig := `[openai]
-model = "gpt-4o-2024-08-06"
+model = "gpt-4-turbo-preview"
 temperature = 0.7
 
 [safety]
 confirm_execution = true
-allowed_commands = ["ls", "git", "docker"]
-denied_commands = ["rm", "dd", "shutdown"]`
+allowed_commands = [
+    "ls *",
+    "touch *",
+    "mkdir *",
+    "echo *",
+    "cat *",
+    "cp *",
+    "mv *",
+    "git *",
+    "docker *",
+    "code *",
+    "vim *",
+    "nano *"
+]
+denied_commands = [
+    "rm -rf /*",
+    "rm -rf /",
+    "dd if=/dev/*",
+    "mkfs.*",
+    "> /dev/*",
+    "shutdown *",
+    "reboot *",
+    "halt *",
+    "*--no-preserve-root*"
+]`
 
 		err := os.WriteFile(configPath, []byte(defaultConfig), 0644)
 		if err != nil {
