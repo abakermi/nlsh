@@ -5,14 +5,17 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/abakermi/nlsh)](https://github.com/abakermi/nlsh)
 
 <img src="./resources//play.gif" width="500" />
-A command-line tool that converts natural language instructions into shell commands using OpenAI's GPT-3.5 model. Simply describe what you want to do in plain English, and nlsh will generate and execute the appropriate shell command.
+A command-line tool that converts natural language instructions into shell commands using OpenAI's GPT model. Simply describe what you want to do in plain English, and nlsh will generate and execute the appropriate shell command.
 
 ## Features
 
-- Natural language to shell command conversion
-- Interactive mode for multiple commands
-- Direct command mode for single instructions
-- Safe command execution with built-in safeguards
+- 🧠 Natural language to shell command conversion
+- 🛡️ Built-in safety checks for dangerous commands
+- ⚙️ Configurable settings via `.nlshrc`
+- 🎨 Colored output for better readability
+- 📝 Command history and context awareness
+- 🔄 Interactive and single command modes
+- 🔒 Confirmation for potentially dangerous operations
 
 ## Prerequisites
 
@@ -28,8 +31,12 @@ Install directly using curl:
 curl -fsSL https://raw.githubusercontent.com/abakermi/nlsh/main/install.sh | bash
 ```
 
-### Option 2: Manual Installation
+### Option 2: Go Install
 
+```bash
+go install github.com/abakermi/nlsh@latest
+```
+### Option 3: Manual Installation
 1. Clone the repository:
    ```bash
    git clone https://github.com/abakermi/nlsh.git
@@ -50,48 +57,38 @@ curl -fsSL https://raw.githubusercontent.com/abakermi/nlsh/main/install.sh | bas
 
 ## Usage
 
+### Set your OpenAI API key:
+
+```bash
+export OPENAI_API_KEY='your-api-key-here'
+```
 ### Interactive Mode
 
-Start the interactive shell by running:
 ```bash
 nlsh
 ```
 
-You'll see a prompt where you can type your natural language requests:
-```
-Natural Language Shell (nlsh) - Type 'exit' to quit
-Enter your request in natural language:
-> list all files in the current directory
-Executing: ls
-```
-
-### Direct Command Mode
-
-Execute a single command directly:
+### Single Command Mode
 ```bash
-nlsh "show me the disk usage in human-readable format"
-Executing: df -h
+nlsh "list all files in current directory"
+```
+## Examples
+```bash
+# List files
+nlsh "show me all hidden files"
+
+# Git operations
+nlsh "commit all changes with message 'update readme'"
+
+# Docker operations
+nlsh "show all running containers"
 ```
 
-## Examples
-
-Here are some example requests you can try:
-
-- "show me all running processes"
-- "what's the current directory"
-- "find all pdf files in the current directory"
-- "show system information"
-- "create a new directory called test"
-
-## Error Handling
-
-- If your request is unclear, nlsh will ask you to be more specific
-- If a command fails to execute, you'll see the error message
-- Invalid API keys or missing environment variables will be reported
-
-## Security
-
-The system prompt includes safety checks to prevent harmful commands. However, always review the generated command before execution in critical environments.
+## Safety Features
+- Command confirmation before execution
+- Configurable allowed/denied commands
+- Pattern-based command filtering
+- Protection against dangerous operations
 
 ## License
 
