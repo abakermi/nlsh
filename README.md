@@ -90,6 +90,38 @@ nlsh "show all running containers"
 - Pattern-based command filtering
 - Protection against dangerous operations
 
+Default configuration includes:
+```toml
+[safety]
+confirm_execution = true
+allowed_commands = [
+    "ls *",
+    "touch *",
+    "mkdir *",
+    "echo *",
+    "cat *",
+    "cp *",
+    "mv *",
+    "git *",
+    "docker *",
+    "code *",
+    "vim *",
+    "nano *"
+]
+denied_commands = [
+    "rm -rf /*",
+    "rm -rf /",
+    "dd if=/dev/*",
+    "mkfs.*",
+    "> /dev/*",
+    "shutdown *",
+    "reboot *",
+    "halt *",
+    "*--no-preserve-root*"
+]
+```
+You can customize nlsh's behavior by creating a `.nlshrc` file in your home directory. The configuration file supports TOML format. Here's an example of a `.nlshrc` file:
+
 ## License
 
 This project is open source and available under the MIT License.
