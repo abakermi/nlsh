@@ -60,12 +60,7 @@ func main() {
 	
 	safetyChecker := safety.NewChecker(
 		cfg.Safety.AllowedCommands,
-		append([]string{
-			"rm * -rf*",
-			"dd *",
-			"mkfs*",
-			"*--no-preserve-root*",
-		}, cfg.Safety.DeniedCommands...),
+		cfg.Safety.DeniedCommands,
 	)
 
 	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
