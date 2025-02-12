@@ -10,9 +10,10 @@ import (
 
 	"github.com/abakermi/nlsh/pkg/assistant"
 	"github.com/abakermi/nlsh/pkg/backend"
-	"github.com/abakermi/nlsh/pkg/config"
 	"github.com/abakermi/nlsh/pkg/color"
+	"github.com/abakermi/nlsh/pkg/config"
 	"github.com/abakermi/nlsh/pkg/safety"
+	"github.com/abakermi/nlsh/pkg/suggestion"
 )
 
 const systemPromptTemplate = `You are a expert system shell assistant. Convert natural language requests into appropriate shell commands for %s.
@@ -55,9 +56,9 @@ func main() {
 	}
 
 	systemCtx := fmt.Sprintf(systemPromptTemplate, runtime.GOOS, getSystemContext(), os.Getenv("SHELL"), runtime.GOOS)
-	
+
 	llmBackend := backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
-	
+
 	safetyChecker := safety.NewChecker(
 		cfg.Safety.AllowedCommands,
 		cfg.Safety.DeniedCommands,
@@ -66,7 +67,7 @@ func main() {
 	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
 
 	fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
-	
+
 	if len(os.Args) > 1 {
 		handleSingleCommand(shellAssistant, os.Args[1:])
 		return
@@ -91,6 +92,9 @@ func handleSingleCommand(assistant *assistant.ShellAssistant, args []string) {
 
 func runInteractiveMode(assistant *assistant.ShellAssistant) {
 	scanner := bufio.NewScanner(os.Stdin)
+	suggester := suggestion.New()
+	var lastCommand string
+
 	fmt.Println("Natural Language Shell (nlsh) - Type 'exit' to quit")
 	fmt.Println("Enter your request in natural language:")
 
@@ -105,6 +109,15 @@ func runInteractiveMode(assistant *assistant.ShellAssistant) {
 			break
 		}
 
+		// Get suggestions based on input and last command
+		suggestions := suggester.GetSuggestions(input, lastCommand)
+		if len(suggestions) > 0 {
+			fmt.Printf("%sSuggested similar commands:%s\n", color.Blue, color.Reset)
+			for _, s := range suggestions {
+				fmt.Printf("  %s%s%s\n", color.Blue, s, color.Reset)
+			}
+		}
+
 		command, err := assistant.GetCommand(input)
 		if err != nil {
 			fmt.Printf("%sError: %v%s\n", color.Red, err, color.Reset)
@@ -113,6 +126,14 @@ func runInteractiveMode(assistant *assistant.ShellAssistant) {
 
 		if err := assistant.ExecuteCommand(command); err != nil {
 			fmt.Printf("%sError executing command: %v%s\n", color.Red, err, color.Reset)
+			continue
 		}
+
+		// Record command for suggestions
+		suggester.AddCommand(command)
+		if lastCommand != "" {
+			suggester.AddContextualCommand(lastCommand, command)
+		}
+		lastCommand = command
 	}
 }
