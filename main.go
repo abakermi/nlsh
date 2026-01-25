@@ -45,11 +45,6 @@ func getSystemContext() string {
 }
 
 func main() {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		log.Fatal("OPENAI_API_KEY environment variable is not set")
-	}
-
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
@@ -57,7 +52,26 @@ func main() {
 
 	systemCtx := fmt.Sprintf(systemPromptTemplate, runtime.GOOS, getSystemContext(), os.Getenv("SHELL"), runtime.GOOS)
 
-	llmBackend := backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
+	var llmBackend backend.LLMBackend
+
+	switch cfg.Backend {
+	case "gemini":
+		apiKey := os.Getenv("GEMINI_API_KEY")
+		if apiKey == "" {
+			log.Fatal("GEMINI_API_KEY environment variable is not set")
+		}
+		geminiBackend, err := backend.NewGeminiBackend(apiKey, cfg, systemCtx)
+		if err != nil {
+			log.Fatalf("Error creating Gemini backend: %v", err)
+		}
+		llmBackend = geminiBackend
+	default: // "openai"
+		apiKey := os.Getenv("OPENAI_API_KEY")
+		if apiKey == "" {
+			log.Fatal("OPENAI_API_KEY environment variable is not set")
+		}
+		llmBackend = backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
+	}
 
 	safetyChecker := safety.NewChecker(
 		cfg.Safety.AllowedCommands,
