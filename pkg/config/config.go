@@ -9,10 +9,15 @@ import (
 )
 
 type Config struct {
-	OpenAI struct {
+	Backend string `toml:"backend"` // "openai" or "gemini"
+	OpenAI  struct {
 		Model       string  `toml:"model"`
 		Temperature float64 `toml:"temperature"`
 	} `toml:"openai"`
+	Gemini struct {
+		Model       string  `toml:"model"`
+		Temperature float64 `toml:"temperature"`
+	} `toml:"gemini"`
 	Safety struct {
 		ConfirmExecution bool     `toml:"confirm_execution"`
 		AllowedCommands  []string `toml:"allowed_commands"`
@@ -25,8 +30,15 @@ func Load() (*Config, error) {
 	configPath := filepath.Join(os.Getenv("HOME"), ".nlshrc")
 	
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		defaultConfig := `[openai]
+		defaultConfig := `# Backend to use: "openai" or "gemini"
+backend = "openai"
+
+[openai]
 model = "gpt-4-turbo-preview"
+temperature = 0.7
+
+[gemini]
+model = "gemini-2.0-flash"
 temperature = 0.7
 
 [safety]
@@ -73,10 +85,19 @@ denied_commands = [
 }
 
 func setDefaults(config *Config) {
+	if config.Backend == "" {
+		config.Backend = "openai"
+	}
 	if config.OpenAI.Model == "" {
 		config.OpenAI.Model = "gpt-4o-2024-08-06"
 	}
 	if config.OpenAI.Temperature == 0 {
 		config.OpenAI.Temperature = 0.7
+	}
+	if config.Gemini.Model == "" {
+		config.Gemini.Model = "gemini-2.0-flash"
+	}
+	if config.Gemini.Temperature == 0 {
+		config.Gemini.Temperature = 0.7
 	}
 }

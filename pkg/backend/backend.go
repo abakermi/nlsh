@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"github.com/sashabaranov/go-openai"
+
 	"github.com/abakermi/nlsh/pkg/config"
 	"github.com/abakermi/nlsh/pkg/session"
+	"github.com/sashabaranov/go-openai"
+	"google.golang.org/genai"
 )
 
 type LLMBackend interface {
@@ -60,6 +62,61 @@ func (b *OpenAIBackend) GenerateCommand(prompt string, ctx session.Context) (str
 	}
 
 	command := strings.TrimSpace(resp.Choices[0].Message.Content)
+	if command == "UNCLEAR" {
+		return "", fmt.Errorf("unclear request, please be more specific")
+	}
+
+	return command, nil
+}
+
+
+// GeminiBackend implements LLMBackend using Google's Gemini API
+type GeminiBackend struct {
+	client    *genai.Client
+	config    *config.Config
+	systemCtx string
+}
+
+func NewGeminiBackend(apiKey string, cfg *config.Config, systemCtx string) (*GeminiBackend, error) {
+	ctx := context.Background()
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey: apiKey,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Gemini client: %v", err)
+	}
+
+	return &GeminiBackend{
+		client:    client,
+		config:    cfg,
+		systemCtx: systemCtx,
+	}, nil
+}
+
+func (b *GeminiBackend) GenerateCommand(prompt string, ctx session.Context) (string, error) {
+	// Build the full prompt with system context
+	fullPrompt := b.systemCtx + "\n\n"
+
+	if len(ctx.PreviousCommands) > 0 {
+		fullPrompt += ctx.GetContextPrompt() + "\n\n"
+	}
+
+	fullPrompt += "User request: " + prompt
+
+	temperature := float32(b.config.Gemini.Temperature)
+	result, err := b.client.Models.GenerateContent(
+		context.Background(),
+		b.config.Gemini.Model,
+		genai.Text(fullPrompt),
+		&genai.GenerateContentConfig{
+			Temperature: &temperature,
+		},
+	)
+	if err != nil {
+		return "", fmt.Errorf("error getting Gemini completion: %v", err)
+	}
+
+	command := strings.TrimSpace(result.Text())
 	if command == "UNCLEAR" {
 		return "", fmt.Errorf("unclear request, please be more specific")
 	}
