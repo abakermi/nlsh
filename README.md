@@ -5,11 +5,13 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/abakermi/nlsh)](https://github.com/abakermi/nlsh)
 
 <img src="./resources//play.gif" width="500" />
-A command-line tool that converts natural language instructions into shell commands using OpenAI's GPT model. Simply describe what you want to do in plain English, and nlsh will generate and execute the appropriate shell command.
+
+A command-line tool that converts natural language instructions into shell commands using AI. Simply describe what you want to do in plain English, and nlsh will generate and execute the appropriate shell command.
 
 ## Features
 
 - 🧠 Natural language to shell command conversion
+- 🤖 Multiple AI backends: OpenAI GPT and Google Gemini
 - 🛡️ Built-in safety checks for dangerous commands
 - ⚙️ Configurable settings via `.nlshrc`
 - 🎨 Colored output for better readability
@@ -19,8 +21,8 @@ A command-line tool that converts natural language instructions into shell comma
 
 ## Prerequisites
 
-- Go 1.21 or later
-- OpenAI API key
+- Go 1.24 or later
+- OpenAI API key or Google Gemini API key
 
 ## Installation
 
@@ -36,15 +38,18 @@ curl -fsSL https://raw.githubusercontent.com/abakermi/nlsh/master/install.sh | b
 ```bash
 go install github.com/abakermi/nlsh@latest
 ```
+
 ### Option 3: Manual Installation
 1. Clone the repository:
    ```bash
    git clone https://github.com/abakermi/nlsh.git
    cd nlsh
    ```
-2. Set your OpenAI API key as an environment variable:
+2. Set your API key as an environment variable:
    ```bash
    export OPENAI_API_KEY='your-api-key-here'
+   # or
+   export GEMINI_API_KEY='your-api-key-here'
    ```
 3. Run the installation script:
    ```bash
@@ -57,11 +62,16 @@ go install github.com/abakermi/nlsh@latest
 
 ## Usage
 
-### Set your OpenAI API key:
+### Set your API key:
 
 ```bash
+# For OpenAI
 export OPENAI_API_KEY='your-api-key-here'
+
+# For Gemini
+export GEMINI_API_KEY='your-api-key-here'
 ```
+
 ### Interactive Mode
 
 ```bash
@@ -72,6 +82,7 @@ nlsh
 ```bash
 nlsh "list all files in current directory"
 ```
+
 ## Examples
 ```bash
 # List files
@@ -84,14 +95,33 @@ nlsh "commit all changes with message 'update readme'"
 nlsh "show all running containers"
 ```
 
-## Safety Features
-- Command confirmation before execution
-- Configurable allowed/denied commands
-- Pattern-based command filtering
-- Protection against dangerous operations
+## Configuration
 
-Default configuration includes:
+You can customize nlsh's behavior by creating a `.nlshrc` file in your home directory. The configuration file supports TOML format.
+
+### Switching Between Backends
+
+Set the `backend` option to choose your AI provider:
+
 ```toml
+# Backend to use: "openai" or "gemini"
+backend = "gemini"
+```
+
+### Full Configuration Example
+
+```toml
+# Backend to use: "openai" or "gemini"
+backend = "openai"
+
+[openai]
+model = "gpt-4-turbo-preview"
+temperature = 0.7
+
+[gemini]
+model = "gemini-2.0-flash"
+temperature = 0.7
+
 [safety]
 confirm_execution = true
 allowed_commands = [
@@ -120,7 +150,13 @@ denied_commands = [
     "*--no-preserve-root*"
 ]
 ```
-You can customize nlsh's behavior by creating a `.nlshrc` file in your home directory. The configuration file supports TOML format. Here's an example of a `.nlshrc` file:
+
+## Safety Features
+
+- Command confirmation before execution
+- Configurable allowed/denied commands
+- Pattern-based command filtering
+- Protection against dangerous operations
 
 ## License
 
