@@ -108,6 +108,18 @@ Set the `backend` option to choose your AI provider:
 backend = "gemini"
 ```
 
+### Local / Self-Hosted Models (Ollama, vLLM, etc.)
+
+You can use local models compatible with the OpenAI API by configuring `base_url`:
+
+```toml
+[openai]
+model = "llama3" # Replace with your local model name
+base_url = "http://localhost:11434/v1" # Example for Ollama
+```
+
+If `base_url` is set, `OPENAI_API_KEY` is not required.
+
 ### Full Configuration Example
 
 ```toml
