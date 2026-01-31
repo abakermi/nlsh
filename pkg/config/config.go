@@ -13,6 +13,7 @@ type Config struct {
 	OpenAI  struct {
 		Model       string  `toml:"model"`
 		Temperature float64 `toml:"temperature"`
+		BaseURL     string  `toml:"base_url"`
 	} `toml:"openai"`
 	Gemini struct {
 		Model       string  `toml:"model"`
@@ -36,6 +37,7 @@ backend = "openai"
 [openai]
 model = "gpt-4-turbo-preview"
 temperature = 0.7
+# base_url = "http://localhost:11434/v1" # Uncomment for local models (Ollama, etc)
 
 [gemini]
 model = "gemini-2.0-flash"

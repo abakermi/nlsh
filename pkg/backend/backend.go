@@ -22,8 +22,13 @@ type OpenAIBackend struct {
 }
 
 func NewOpenAIBackend(apiKey string, cfg *config.Config, systemCtx string) *OpenAIBackend {
+	clientConfig := openai.DefaultConfig(apiKey)
+	if cfg.OpenAI.BaseURL != "" {
+		clientConfig.BaseURL = cfg.OpenAI.BaseURL
+	}
+	
 	return &OpenAIBackend{
-		client:    openai.NewClient(apiKey),
+		client:    openai.NewClientWithConfig(clientConfig),
 		config:    cfg,
 		systemCtx: systemCtx,
 	}

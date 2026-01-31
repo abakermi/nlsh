@@ -68,7 +68,12 @@ func main() {
 	default: // "openai"
 		apiKey := os.Getenv("OPENAI_API_KEY")
 		if apiKey == "" {
-			log.Fatal("OPENAI_API_KEY environment variable is not set")
+			if cfg.OpenAI.BaseURL != "" {
+				// For local models, API key might not be needed, use dummy
+				apiKey = "sk-dummy-key-for-local-llm"
+			} else {
+				log.Fatal("OPENAI_API_KEY environment variable is not set")
+			}
 		}
 		llmBackend = backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
 	}
