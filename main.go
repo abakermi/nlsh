@@ -44,10 +44,31 @@ func getSystemContext() string {
 	)
 }
 
+func fatalError(printOnly bool, format string, args ...any) {
+	if printOnly {
+		fmt.Fprintf(os.Stderr, format+"\n", args...)
+		os.Exit(1)
+	}
+	log.Fatalf(format, args...)
+}
+
+func parseArgs(args []string) (printOnly bool, remaining []string) {
+	for _, arg := range args {
+		if arg == "--print-only" {
+			printOnly = true
+		} else {
+			remaining = append(remaining, arg)
+		}
+	}
+	return
+}
+
 func main() {
+	printOnly, queryArgs := parseArgs(os.Args[1:])
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		fatalError(printOnly, "Error loading config: %v", err)
 	}
 
 	systemCtx := fmt.Sprintf(systemPromptTemplate, runtime.GOOS, getSystemContext(), os.Getenv("SHELL"), runtime.GOOS)
@@ -58,11 +79,11 @@ func main() {
 	case "gemini":
 		apiKey := os.Getenv("GEMINI_API_KEY")
 		if apiKey == "" {
-			log.Fatal("GEMINI_API_KEY environment variable is not set")
+			fatalError(printOnly, "GEMINI_API_KEY environment variable is not set")
 		}
 		geminiBackend, err := backend.NewGeminiBackend(apiKey, cfg, systemCtx)
 		if err != nil {
-			log.Fatalf("Error creating Gemini backend: %v", err)
+			fatalError(printOnly, "Error creating Gemini backend: %v", err)
 		}
 		llmBackend = geminiBackend
 	default: // "openai"
@@ -72,7 +93,7 @@ func main() {
 				// For local models, API key might not be needed, use dummy
 				apiKey = "sk-dummy-key-for-local-llm"
 			} else {
-				log.Fatal("OPENAI_API_KEY environment variable is not set")
+				fatalError(printOnly, "OPENAI_API_KEY environment variable is not set")
 			}
 		}
 		llmBackend = backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
@@ -85,22 +106,37 @@ func main() {
 
 	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
 
-	fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
-
-	if len(os.Args) > 1 {
-		handleSingleCommand(shellAssistant, os.Args[1:])
-		return
+	if printOnly {
+		if len(queryArgs) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --print-only requires a query argument")
+			os.Exit(1)
+		}
+		handleSingleCommand(shellAssistant, queryArgs, true)
+	} else {
+		fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
+		if len(queryArgs) > 0 {
+			handleSingleCommand(shellAssistant, queryArgs, false)
+		} else {
+			runInteractiveMode(shellAssistant)
+		}
 	}
-
-	runInteractiveMode(shellAssistant)
 }
 
-func handleSingleCommand(assistant *assistant.ShellAssistant, args []string) {
+func handleSingleCommand(assistant *assistant.ShellAssistant, args []string, printOnly bool) {
 	input := strings.Join(args, " ")
 	command, err := assistant.GetCommand(input)
 	if err != nil {
+		if printOnly {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 		fmt.Printf("%sError: %v%s\n", color.Red, err, color.Reset)
 		os.Exit(1)
+	}
+
+	if printOnly {
+		fmt.Println(command)
+		return
 	}
 
 	if err := assistant.ExecuteCommand(command); err != nil {

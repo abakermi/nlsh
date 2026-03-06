@@ -83,6 +83,30 @@ nlsh
 nlsh "list all files in current directory"
 ```
 
+### Print-only mode
+
+Output only the generated command to stdout, with no colors, UI chrome, or execution:
+
+```sh
+nlsh --print-only "commit all changes"
+# → git commit -am "update"
+```
+
+This enables shell integrations. Example zsh widget (bind to `Ctrl+G`):
+
+```zsh
+nlsh-widget() {
+  local cmd
+  cmd="$(nlsh --print-only "$LBUFFER")" || return 0
+  [[ -n "$cmd" ]] || return 0
+  BUFFER="$cmd"
+  CURSOR=${#BUFFER}
+  zle redisplay
+}
+zle -N nlsh-widget
+bindkey '^G' nlsh-widget
+```
+
 ## Examples
 ```bash
 # List files
