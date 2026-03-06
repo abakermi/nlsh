@@ -44,6 +44,14 @@ func getSystemContext() string {
 	)
 }
 
+func fatalError(printOnly bool, format string, args ...any) {
+	if printOnly {
+		fmt.Fprintf(os.Stderr, format+"\n", args...)
+		os.Exit(1)
+	}
+	log.Fatalf(format, args...)
+}
+
 func parseArgs(args []string) (printOnly bool, remaining []string) {
 	for _, arg := range args {
 		if arg == "--print-only" {
@@ -60,11 +68,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		if printOnly {
-			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-			os.Exit(1)
-		}
-		log.Fatalf("Error loading config: %v", err)
+		fatalError(printOnly, "Error loading config: %v", err)
 	}
 
 	systemCtx := fmt.Sprintf(systemPromptTemplate, runtime.GOOS, getSystemContext(), os.Getenv("SHELL"), runtime.GOOS)
@@ -75,19 +79,11 @@ func main() {
 	case "gemini":
 		apiKey := os.Getenv("GEMINI_API_KEY")
 		if apiKey == "" {
-			if printOnly {
-				fmt.Fprintln(os.Stderr, "GEMINI_API_KEY environment variable is not set")
-				os.Exit(1)
-			}
-			log.Fatal("GEMINI_API_KEY environment variable is not set")
+			fatalError(printOnly, "GEMINI_API_KEY environment variable is not set")
 		}
 		geminiBackend, err := backend.NewGeminiBackend(apiKey, cfg, systemCtx)
 		if err != nil {
-			if printOnly {
-				fmt.Fprintf(os.Stderr, "Error creating Gemini backend: %v\n", err)
-				os.Exit(1)
-			}
-			log.Fatalf("Error creating Gemini backend: %v", err)
+			fatalError(printOnly, "Error creating Gemini backend: %v", err)
 		}
 		llmBackend = geminiBackend
 	default: // "openai"
@@ -97,11 +93,7 @@ func main() {
 				// For local models, API key might not be needed, use dummy
 				apiKey = "sk-dummy-key-for-local-llm"
 			} else {
-				if printOnly {
-					fmt.Fprintln(os.Stderr, "OPENAI_API_KEY environment variable is not set")
-					os.Exit(1)
-				}
-				log.Fatal("OPENAI_API_KEY environment variable is not set")
+				fatalError(printOnly, "OPENAI_API_KEY environment variable is not set")
 			}
 		}
 		llmBackend = backend.NewOpenAIBackend(apiKey, cfg, systemCtx)
@@ -114,25 +106,20 @@ func main() {
 
 	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
 
-	if !printOnly {
-		fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
-	}
-
 	if printOnly {
 		if len(queryArgs) == 0 {
 			fmt.Fprintln(os.Stderr, "Error: --print-only requires a query argument")
 			os.Exit(1)
 		}
 		handleSingleCommand(shellAssistant, queryArgs)
-		return
+	} else {
+		fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
+		if len(queryArgs) > 0 {
+			handleSingleCommand(shellAssistant, queryArgs)
+		} else {
+			runInteractiveMode(shellAssistant)
+		}
 	}
-
-	if len(queryArgs) > 0 {
-		handleSingleCommand(shellAssistant, queryArgs)
-		return
-	}
-
-	runInteractiveMode(shellAssistant)
 }
 
 func handleSingleCommand(assistant *assistant.ShellAssistant, args []string) {

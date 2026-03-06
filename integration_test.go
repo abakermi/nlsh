@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -12,6 +13,17 @@ import (
 	"github.com/abakermi/nlsh/pkg/config"
 	"github.com/abakermi/nlsh/pkg/safety"
 )
+
+func TestMain(m *testing.M) {
+	// Build binary for integration tests
+	build := exec.Command("go", "build", "-o", "nlsh", ".")
+	build.Dir = "."
+	if out, err := build.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to build nlsh: %v\n%s\n", err, out)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 func TestIntegration(t *testing.T) {
 	if os.Getenv("OPENAI_API_KEY") == "" {
