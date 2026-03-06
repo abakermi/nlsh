@@ -22,7 +22,9 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Failed to build nlsh: %v\n%s\n", err, out)
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	os.Remove("nlsh")
+	os.Exit(code)
 }
 
 func TestIntegration(t *testing.T) {
@@ -54,30 +56,21 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
-func TestPrintOnlyNoStartupOutput(t *testing.T) {
-	// When --print-only is passed, the "[System]" startup line must NOT appear in stdout.
+func TestPrintOnlyCleanStdout(t *testing.T) {
 	cmd := exec.Command("./nlsh", "--print-only", "list files")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	// We expect non-zero exit (no API key in test env), but stdout must be clean
 	cmd.Run()
-	if strings.Contains(stdout.String(), "[System]") {
-		t.Errorf("--print-only stdout must not contain '[System]', got: %q", stdout.String())
-	}
-}
-
-func TestPrintOnlyCleanStdout(t *testing.T) {
-	cmd := exec.Command("./nlsh", "--print-only", "list files")
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Run()
 	out := stdout.String()
+	if strings.Contains(out, "[System]") {
+		t.Errorf("--print-only stdout must not contain '[System]', got: %q", out)
+	}
 	if strings.Contains(out, "\033[") {
 		t.Errorf("--print-only stdout must not contain ANSI codes, got: %q", out)
 	}
-	if strings.Contains(out, "[System]") || strings.Contains(out, "Command:") || strings.Contains(out, "Execute?") {
+	if strings.Contains(out, "Command:") || strings.Contains(out, "Execute?") {
 		t.Errorf("--print-only stdout must not contain UI chrome, got: %q", out)
 	}
 }
