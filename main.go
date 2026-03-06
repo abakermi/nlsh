@@ -44,9 +44,26 @@ func getSystemContext() string {
 	)
 }
 
+func parseArgs(args []string) (printOnly bool, remaining []string) {
+	for _, arg := range args {
+		if arg == "--print-only" {
+			printOnly = true
+		} else {
+			remaining = append(remaining, arg)
+		}
+	}
+	return
+}
+
 func main() {
+	printOnly, queryArgs := parseArgs(os.Args[1:])
+
 	cfg, err := config.Load()
 	if err != nil {
+		if printOnly {
+			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+			os.Exit(1)
+		}
 		log.Fatalf("Error loading config: %v", err)
 	}
 
@@ -58,10 +75,18 @@ func main() {
 	case "gemini":
 		apiKey := os.Getenv("GEMINI_API_KEY")
 		if apiKey == "" {
+			if printOnly {
+				fmt.Fprintln(os.Stderr, "GEMINI_API_KEY environment variable is not set")
+				os.Exit(1)
+			}
 			log.Fatal("GEMINI_API_KEY environment variable is not set")
 		}
 		geminiBackend, err := backend.NewGeminiBackend(apiKey, cfg, systemCtx)
 		if err != nil {
+			if printOnly {
+				fmt.Fprintf(os.Stderr, "Error creating Gemini backend: %v\n", err)
+				os.Exit(1)
+			}
 			log.Fatalf("Error creating Gemini backend: %v", err)
 		}
 		llmBackend = geminiBackend
@@ -72,6 +97,10 @@ func main() {
 				// For local models, API key might not be needed, use dummy
 				apiKey = "sk-dummy-key-for-local-llm"
 			} else {
+				if printOnly {
+					fmt.Fprintln(os.Stderr, "OPENAI_API_KEY environment variable is not set")
+					os.Exit(1)
+				}
 				log.Fatal("OPENAI_API_KEY environment variable is not set")
 			}
 		}
@@ -85,10 +114,21 @@ func main() {
 
 	shellAssistant := assistant.New(llmBackend, cfg, safetyChecker)
 
-	fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
+	if !printOnly {
+		fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
+	}
 
-	if len(os.Args) > 1 {
-		handleSingleCommand(shellAssistant, os.Args[1:])
+	if printOnly {
+		if len(queryArgs) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --print-only requires a query argument")
+			os.Exit(1)
+		}
+		handleSingleCommand(shellAssistant, queryArgs)
+		return
+	}
+
+	if len(queryArgs) > 0 {
+		handleSingleCommand(shellAssistant, queryArgs)
 		return
 	}
 

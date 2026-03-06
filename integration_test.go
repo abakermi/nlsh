@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
+
 	"github.com/abakermi/nlsh/pkg/assistant"
 	"github.com/abakermi/nlsh/pkg/backend"
 	"github.com/abakermi/nlsh/pkg/config"
@@ -35,5 +39,18 @@ func TestIntegration(t *testing.T) {
 
 	if command == "" {
 		t.Error("Expected non-empty command")
+	}
+}
+
+func TestPrintOnlyNoStartupOutput(t *testing.T) {
+	// When --print-only is passed, the "[System]" startup line must NOT appear in stdout.
+	cmd := exec.Command("./nlsh", "--print-only", "list files")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	// We expect non-zero exit (no API key in test env), but stdout must be clean
+	cmd.Run()
+	if strings.Contains(stdout.String(), "[System]") {
+		t.Errorf("--print-only stdout must not contain '[System]', got: %q", stdout.String())
 	}
 }
