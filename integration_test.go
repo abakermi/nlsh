@@ -66,3 +66,18 @@ func TestPrintOnlyNoStartupOutput(t *testing.T) {
 		t.Errorf("--print-only stdout must not contain '[System]', got: %q", stdout.String())
 	}
 }
+
+func TestPrintOnlyCleanStdout(t *testing.T) {
+	cmd := exec.Command("./nlsh", "--print-only", "list files")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Run()
+	out := stdout.String()
+	if strings.Contains(out, "\033[") {
+		t.Errorf("--print-only stdout must not contain ANSI codes, got: %q", out)
+	}
+	if strings.Contains(out, "[System]") || strings.Contains(out, "Command:") || strings.Contains(out, "Execute?") {
+		t.Errorf("--print-only stdout must not contain UI chrome, got: %q", out)
+	}
+}

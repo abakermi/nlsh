@@ -111,23 +111,32 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error: --print-only requires a query argument")
 			os.Exit(1)
 		}
-		handleSingleCommand(shellAssistant, queryArgs)
+		handleSingleCommand(shellAssistant, queryArgs, true)
 	} else {
 		fmt.Printf("%s[System]%s Natural Language Shell initialized\n", color.Green, color.Reset)
 		if len(queryArgs) > 0 {
-			handleSingleCommand(shellAssistant, queryArgs)
+			handleSingleCommand(shellAssistant, queryArgs, false)
 		} else {
 			runInteractiveMode(shellAssistant)
 		}
 	}
 }
 
-func handleSingleCommand(assistant *assistant.ShellAssistant, args []string) {
+func handleSingleCommand(assistant *assistant.ShellAssistant, args []string, printOnly bool) {
 	input := strings.Join(args, " ")
 	command, err := assistant.GetCommand(input)
 	if err != nil {
+		if printOnly {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 		fmt.Printf("%sError: %v%s\n", color.Red, err, color.Reset)
 		os.Exit(1)
+	}
+
+	if printOnly {
+		fmt.Println(command)
+		return
 	}
 
 	if err := assistant.ExecuteCommand(command); err != nil {
